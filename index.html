@@ -1,6 +1,3 @@
-<?php
-// index.php - VERSÃO FINAL LIMPA (SEM BOTÃO DE LOG)
-?>
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -167,6 +164,15 @@
             border-radius: 3px;
             white-space: pre-line;
         }
+        .sms-badge {
+            display: inline-block;
+            background: #f0f;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-right: 5px;
+        }
     </style>
 </head>
 <body>
@@ -238,13 +244,10 @@ function escapeHtml(text) {
 }
 
 async function checkCard(card) {
-    const params = new URLSearchParams();
-    params.append('card', card);
-    
-    const response = await fetch('check.php', {
+    const response = await fetch('/check', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-        body: params.toString()
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ card: card })
     });
     
     const data = await response.json();
@@ -253,7 +256,7 @@ async function checkCard(card) {
         for (let i = 0; i < 90; i++) {
             await new Promise(r => setTimeout(r, 1000));
             
-            const pollResp = await fetch(`check.php?hash=${data.hash}`);
+            const pollResp = await fetch(`/poll/${data.hash}`);
             const pollData = await pollResp.json();
             
             if (pollData.status !== 'WAIT') {
@@ -278,17 +281,16 @@ function addResult(card, status, message, elapsed) {
     const div = document.createElement('div');
     div.className = 'result-line';
     
-    // Formatar mensagem - remover prefixos e mostrar detalhes
+    // Formatar mensagem
     let displayMessage = message;
     let detailsHtml = '';
     
-    // Se a mensagem contém quebra de linha (detalhes do 3DS)
-    if (message.includes('\n📋 ')) {
-        const parts = message.split('\n📋 ');
-        displayMessage = parts[0]; // "✅ LIVE - Autorização de Compra"
-        if (parts[1]) {
-            detailsHtml = `<div class="details-text">📋 ${escapeHtml(parts[1])}</div>`;
-        }
+    // Se tem detalhes (quebra de linha)
+    if (message.includes('\n📋 ') || message.includes('\n📱 ')) {
+        const lines = message.split('\n');
+        displayMessage = lines[0];
+        const details = lines.slice(1).join('\n');
+        detailsHtml = `<div class="details-text">${escapeHtml(details)}</div>`;
     }
     
     div.innerHTML = `
